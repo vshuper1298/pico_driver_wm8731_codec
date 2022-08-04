@@ -45,6 +45,12 @@ target_include_directories(FreeRTOS PUBLIC
     ${FREERTOS_CFG_DIRECTORY}/
     ${FREERTOS_SRC_DIRECTORY}/include
     ${FREERTOS_SRC_DIRECTORY}/portable/GCC/ARM_CM0
+    ${EXAMPLES}/
+    ${EXAMPLES}/pio/
+)
+
+set(EXAMPLES
+    examples/pio/pio_example.cpp
 )
 
 set(SOURCES 
@@ -61,9 +67,11 @@ add_executable(
     adc_driver
     main.cpp
     ${SOURCES}
+    ${EXAMPLES}
 )
 
 pico_generate_pio_header(adc_driver ${CMAKE_CURRENT_LIST_DIR}/pio_serialiser.pio)
+pico_generate_pio_header(adc_driver ${CMAKE_CURRENT_LIST_DIR}/examples/pio/example.pio)
 
 # pull in common dependencies
 target_link_libraries(

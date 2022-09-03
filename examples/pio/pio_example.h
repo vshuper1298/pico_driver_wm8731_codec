@@ -11,10 +11,16 @@ namespace examples
 	public:
 		virtual void init() override;
 		virtual void run() override;
+		inline void increase_counter(int count = 0) { counter += count; update_y_reg(); }
+		inline void decrease_counter(int count = 0) { counter -= count; update_y_reg(); }
+
+	private:
+		void update_y_reg();
 
 	private:
 		PIO m_pio;
 		uint m_offset;
+		uint counter = 0;
 	};
 }
 

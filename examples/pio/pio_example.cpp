@@ -40,10 +40,20 @@ void write_wave_program_data()
   }
 }
 
+void PioExample::update_y_reg()
+{
+  if (counter > 31) counter = 0;
+  pio_sm_exec(pio_1, sm1, pio_encode_set(pio_y, counter));
+}
+
 void PioExample::run()
 {
   multicore_launch_core1(write_wave_program_data);
+  static uint16_t i = 20;
   while (true) {
+    // --i;
+    // if (i == false)
+    //   increase_counter(31);
     pio_sm_put_blocking(pio, sm, 1);
     pio_sm_put_blocking(pio, sm, 0);
   }

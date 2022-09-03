@@ -46,20 +46,27 @@ void pio_example_program_init(PIO pio, uint sm, uint offset, uint pin) {
 %}
 
 .program pio_example_wave
-
-loop:
-    out x, 31
-    delay_loop:
-        nop
-        jmp x-- delay_loop
+set y, 2 ; n variable, represents a single up-down wave width multiplier
+;out isr, 32
+mainloop:
+    ; mov x, y
+    ; delay_loop:
+    ;     ;nop [31]
+    ;     jmp x-- delay_loop
     ;nop [31]
     pull
     out pins, 1
-    nop [31]
+    mov x, y
+    hi_loop:
+        nop [31]
+        jmp x-- hi_loop
     pull
     out pins, 1
-    nop [31]
-    jmp loop
+    mov x, y
+    lo_loop:
+        nop [31]
+        jmp x-- lo_loop
+    jmp mainloop
 
 
 % c-sdk {

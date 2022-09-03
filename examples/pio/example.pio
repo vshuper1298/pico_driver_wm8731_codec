@@ -8,21 +8,83 @@
 
 .program pio_example
 
-set pindirs, 1   ; Set pin to output
-.wrap_target
-	set pins, 1 [1]     ; Drive pin high
-	set pins, 0 [1]     ; Drive pin low
-.wrap
+loop:
+    pull
+    out pins, 1
+    nop [31]
+    pull
+    out pins, 1
+    nop [31]
+    jmp loop
 
 
 % c-sdk {
 // this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
 
 void pio_example_program_init(PIO pio, uint sm, uint offset, uint pin) {
-   pio_gpio_init(pio, pin);
-   pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
-   pio_sm_config c = pio_example_program_get_default_config(offset);
-   sm_config_set_set_pins(&c, pin, 1);
-   pio_sm_init(pio, sm, offset, &c);
+
+    // Sets up state machine and wrap target. This function is automatically
+    // generated in blink.pio.h.
+    pio_sm_config c = pio_example_program_get_default_config(offset);
+
+    // Allow PIO to control GPIO pin (as output)
+    pio_gpio_init(pio, pin);
+
+    // Set the pin direction to output (in PIO)
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+
+    sm_config_set_out_pins(&c, pin, 1);
+
+    //sm_config_set_out_shift(&c, true, true, 32);
+
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+
+    // Load configuration and jump to start of the program
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
+
+.program pio_example_wave
+
+loop:
+    out x, 31
+    delay_loop:
+        nop
+        jmp x-- delay_loop
+    ;nop [31]
+    pull
+    out pins, 1
+    nop [31]
+    pull
+    out pins, 1
+    nop [31]
+    jmp loop
+
+
+% c-sdk {
+// this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
+
+void pio_example_wave_program_init(PIO pio, uint sm, uint offset, uint pin) {
+
+    // Sets up state machine and wrap target. This function is automatically
+    // generated in blink.pio.h.
+    pio_sm_config c = pio_example_wave_program_get_default_config(offset);
+
+    // Allow PIO to control GPIO pin (as output)
+    pio_gpio_init(pio, pin);
+
+    // Set the pin direction to output (in PIO)
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+
+    sm_config_set_out_pins(&c, pin, 1);
+
+    //sm_config_set_out_shift(&c, true, true, 32);
+
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+
+    // Load configuration and jump to start of the program
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
 }
 %}

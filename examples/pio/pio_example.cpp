@@ -4,40 +4,49 @@
 #include "pico/stdlib.h"
 #include "hardware/clocks.h"
 #include "example.pio.h"
-
-void write_pin_forever(PIO pio, uint sm, uint offset, uint pin, uint freq) {
-  pio_example_program_init(pio, sm, offset, pin);
-  pio_sm_set_enabled(pio, sm, true);
-
-	pio_sm_put(pio, sm, 1);
-  sleep_ms(500);
-  pio_sm_put(pio, sm, 0);
-
-  printf("Writing pin %d at %d Hz\n", pin, freq);
-
-  // PIO counter program takes 3 more cycles in total than we pass as
-  // input (wait for n + 1; mov; jmp)
-  pio->txf[sm] = (clock_get_hz(clk_sys) / (2 * freq)) - 3;
-}
+#include "pico/multicore.h"
 
 namespace examples
 {
 
+const PIO pio = pio0;
+const PIO pio_1 = pio1;
+uint sm = -1;
+uint sm1 = -1;
+
 void PioExample::init()
 {
-	setup_default_uart();
+	// setup_default_uart();
 
-  // todo get free sm
-  m_pio = pio0;
-  m_offset = pio_add_program(m_pio, &pio_example_program);
-  printf("Loaded program at %d\n", m_offset);
+  // Get first free state machine in PIO 0
+  sm = pio_claim_unused_sm(pio, true);
+  sm1 = pio_claim_unused_sm(pio_1, true);
+
+  // Add PIO program to PIO instruction memory. SDK will find location and
+  // return with the memory offset of the program.
+  const uint offset = pio_add_program(pio, &pio_example_program);
+  const uint offset1 = pio_add_program(pio_1, &pio_example_wave_program);
+
+  // Initialize the program using the helper function in our .pio file
+  pio_example_program_init(pio, sm, offset, 6);
+  pio_example_wave_program_init(pio_1, sm1, offset1, 7);
+}
+
+void write_wave_program_data()
+{
+  while (true) {
+    pio_sm_put_blocking(pio_1, sm1, 1);
+    pio_sm_put_blocking(pio_1, sm1, 0);
+  }
 }
 
 void PioExample::run()
 {
-  write_pin_forever(m_pio, 0, m_offset, 22, 3);
-  write_pin_forever(m_pio, 1, m_offset, 24, 4);
-  write_pin_forever(m_pio, 2, m_offset, 25, 1);
+  multicore_launch_core1(write_wave_program_data);
+  while (true) {
+    pio_sm_put_blocking(pio, sm, 1);
+    pio_sm_put_blocking(pio, sm, 0);
+  }
 }
 
 } //namespace examples

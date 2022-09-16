@@ -20,7 +20,7 @@ namespace examples
 	private:
 		PIO m_pio;
 		uint m_offset;
-		uint counter = 0;
+		uint counter = 1;
 	};
 }
 

@@ -8,20 +8,36 @@
 
 .program pio_example
 
-loop:
+set y, 0
+mainloop:
     pull
     out pins, 1
-    nop [31]
+    mov x, y
+    hi_delay_loop:
+        nop [30]
+        jmp x-- hi_delay_loop
+    nop
     pull
     out pins, 1
-    nop [31]
-    jmp loop
+    mov x, y
+    lo_delay_loop:
+        nop [30]
+        jmp x-- lo_delay_loop
+    jmp mainloop
+    ;;
+    ; pull
+    ; out pins, 1
+    ; nop [31]
+    ; pull
+    ; out pins, 1
+    ; nop [30]
+    ; jmp loop
 
 
 % c-sdk {
 // this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
 
-void pio_example_program_init(PIO pio, uint sm, uint offset, uint pin) {
+void pio_example_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
 
     // Sets up state machine and wrap target. This function is automatically
     // generated in blink.pio.h.
@@ -37,6 +53,8 @@ void pio_example_program_init(PIO pio, uint sm, uint offset, uint pin) {
 
     //sm_config_set_out_shift(&c, true, true, 32);
 
+    sm_config_set_clkdiv(&c, div);
+
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
 
     // Load configuration and jump to start of the program
@@ -46,33 +64,34 @@ void pio_example_program_init(PIO pio, uint sm, uint offset, uint pin) {
 %}
 
 .program pio_example_wave
-set y, 2 ; n variable, represents a single up-down wave width multiplier
+set y, 0 ; n variable, represents a single up-down wave width multiplier
 ;out isr, 32
+; set x, 31
+; delay_loop:
+;     nop [30]
+;     jmp x-- delay_loop
+
 mainloop:
-    ; mov x, y
-    ; delay_loop:
-    ;     ;nop [31]
-    ;     jmp x-- delay_loop
-    ;nop [31]
     pull
     out pins, 1
     mov x, y
-    hi_loop:
-        nop [31]
-        jmp x-- hi_loop
+    hi_delay_loop:
+        nop [30]
+        jmp x-- hi_delay_loop
+    nop
     pull
     out pins, 1
     mov x, y
-    lo_loop:
-        nop [31]
-        jmp x-- lo_loop
+    lo_delay_loop:
+        nop [30]
+        jmp x-- lo_delay_loop
     jmp mainloop
 
 
 % c-sdk {
 // this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
 
-void pio_example_wave_program_init(PIO pio, uint sm, uint offset, uint pin) {
+void pio_example_wave_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
 
     // Sets up state machine and wrap target. This function is automatically
     // generated in blink.pio.h.
@@ -89,6 +108,8 @@ void pio_example_wave_program_init(PIO pio, uint sm, uint offset, uint pin) {
     //sm_config_set_out_shift(&c, true, true, 32);
 
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+
+    sm_config_set_clkdiv(&c, div);
 
     // Load configuration and jump to start of the program
     pio_sm_init(pio, sm, offset, &c);

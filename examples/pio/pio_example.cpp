@@ -27,9 +27,11 @@ void PioExample::init()
   const uint offset = pio_add_program(pio, &pio_example_program);
   const uint offset1 = pio_add_program(pio_1, &pio_example_wave_program);
 
+  float div = clock_get_hz(clk_sys) / 134000;
   // Initialize the program using the helper function in our .pio file
-  pio_example_program_init(pio, sm, offset, 6);
-  pio_example_wave_program_init(pio_1, sm1, offset1, 7);
+  pio_example_program_init(pio, sm, offset, 6, 4);
+  // sleep_ms(20);
+  pio_example_wave_program_init(pio_1, sm1, offset1, 7, 4);
 }
 
 void write_wave_program_data()
@@ -49,7 +51,7 @@ void PioExample::update_y_reg()
 void PioExample::run()
 {
   multicore_launch_core1(write_wave_program_data);
-  static uint16_t i = 20;
+  // static uint16_t i = 20;
   while (true) {
     // --i;
     // if (i == false)

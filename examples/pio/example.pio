@@ -8,30 +8,21 @@
 
 .program pio_example
 
-set y, 0
-mainloop:
-    pull
-    out pins, 1
-    mov x, y
-    hi_delay_loop:
-        nop [30]
-        jmp x-- hi_delay_loop
-    nop
-    pull
-    out pins, 1
-    mov x, y
-    lo_delay_loop:
-        nop [30]
-        jmp x-- lo_delay_loop
-    jmp mainloop
-    ;;
-    ; pull
-    ; out pins, 1
-    ; nop [31]
-    ; pull
-    ; out pins, 1
-    ; nop [30]
-    ; jmp loop
+pull block              ; Pull from FIFO to OSR (only happens once)
+
+.wrap_target            ; Program wraps to here
+; ACTIVE
+mov x, osr              ; Copy value from OSR to x scratch register
+irq 0
+irq 1
+set pins, 1
+high:
+    jmp x-- high        ; Remain in active mode, decrementing counter
+; INACTIVE
+mov x, osr [2]
+set pins, 0
+low:
+    jmp x-- low         ; Remain in inactive mode, decrementing counter
 
 
 % c-sdk {
@@ -43,6 +34,8 @@ void pio_example_program_init(PIO pio, uint sm, uint offset, uint pin, float div
     // generated in blink.pio.h.
     pio_sm_config c = pio_example_program_get_default_config(offset);
 
+    sm_config_set_set_pins(&c, pin, 1);
+
     // Allow PIO to control GPIO pin (as output)
     pio_gpio_init(pio, pin);
 
@@ -59,33 +52,30 @@ void pio_example_program_init(PIO pio, uint sm, uint offset, uint pin, float div
 
     // Load configuration and jump to start of the program
     pio_sm_init(pio, sm, offset, &c);
-    pio_sm_set_enabled(pio, sm, true);
 }
 %}
 
 .program pio_example_wave
-set y, 0 ; n variable, represents a single up-down wave width multiplier
-;out isr, 32
-; set x, 31
-; delay_loop:
-;     nop [30]
-;     jmp x-- delay_loop
+.side_set 1 opt
 
-mainloop:
-    pull
-    out pins, 1
-    mov x, y
-    hi_delay_loop:
-        nop [30]
-        jmp x-- hi_delay_loop
-    nop
-    pull
-    out pins, 1
-    mov x, y
-    lo_delay_loop:
-        nop [30]
-        jmp x-- lo_delay_loop
-    jmp mainloop
+pull block                 ; Pull from FIFO to OSR (only once)
+irq 0
+
+.wrap_target
+; ACTIVE
+mov x, osr                 ; Copy value from OSR to x scratch register
+wait 1 irq 0               ; Wait for first wave to go high
+; wait 1 irq 1
+set pins, 1
+high:
+    jmp x-- high           ; Remain in active mode, decrementing counter
+; INACTIVE
+mov x, osr [3]
+set pins, 0
+public low:
+    jmp x-- low            ; Remain in inactive mode, decrementing counter
+
+.wrap
 
 
 % c-sdk {
@@ -97,6 +87,8 @@ void pio_example_wave_program_init(PIO pio, uint sm, uint offset, uint pin, floa
     // generated in blink.pio.h.
     pio_sm_config c = pio_example_wave_program_get_default_config(offset);
 
+    sm_config_set_set_pins(&c, pin, 1);
+
     // Allow PIO to control GPIO pin (as output)
     pio_gpio_init(pio, pin);
 
@@ -113,6 +105,5 @@ void pio_example_wave_program_init(PIO pio, uint sm, uint offset, uint pin, floa
 
     // Load configuration and jump to start of the program
     pio_sm_init(pio, sm, offset, &c);
-    pio_sm_set_enabled(pio, sm, true);
 }
 %}

@@ -9,12 +9,12 @@
 .program pio_example
 
 pull block              ; Pull from FIFO to OSR (only happens once)
+nop
+wait 1 irq 0            ; Wait to start both waves synchronously
 
 .wrap_target            ; Program wraps to here
 ; ACTIVE
-mov x, osr              ; Copy value from OSR to x scratch register
-irq 0
-irq 1
+mov x, osr [2]             ; Copy value from OSR to x scratch register
 set pins, 1
 high:
     jmp x-- high        ; Remain in active mode, decrementing counter
@@ -23,6 +23,7 @@ mov x, osr [2]
 set pins, 0
 low:
     jmp x-- low         ; Remain in inactive mode, decrementing counter
+.wrap
 
 
 % c-sdk {
@@ -58,19 +59,22 @@ void pio_example_program_init(PIO pio, uint sm, uint offset, uint pin, float div
 .program pio_example_wave
 .side_set 1 opt
 
-pull block                 ; Pull from FIFO to OSR (only once)
-irq 0
+pull block                  ; Pull from FIFO to OSR (only once)
+set y, 0
+wait 1 irq 0                ; Wait to start both waves synchronously
 
 .wrap_target
 ; ACTIVE
-mov x, osr                 ; Copy value from OSR to x scratch register
-wait 1 irq 0               ; Wait for first wave to go high
-; wait 1 irq 1
+mov x, osr [1]              ; Copy value from OSR to x scratch register
+jmp !y begin
+shift_loop:
+    jmp y-- begin
+begin:
 set pins, 1
 high:
     jmp x-- high           ; Remain in active mode, decrementing counter
 ; INACTIVE
-mov x, osr [3]
+mov x, osr [2]
 set pins, 0
 public low:
     jmp x-- low            ; Remain in inactive mode, decrementing counter
@@ -100,6 +104,32 @@ void pio_example_wave_program_init(PIO pio, uint sm, uint offset, uint pin, floa
     //sm_config_set_out_shift(&c, true, true, 32);
 
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+
+    sm_config_set_clkdiv(&c, div);
+
+    // Load configuration and jump to start of the program
+    pio_sm_init(pio, sm, offset, &c);
+}
+%}
+
+.program interrupt_controller
+
+nop [10]
+irq 0 [1]
+
+.wrap_target
+nop
+.wrap
+
+
+% c-sdk {
+// this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
+
+void interrupt_controller_program_init(PIO pio, uint sm, uint offset, uint pin, float div) {
+
+    // Sets up state machine and wrap target. This function is automatically
+    // generated in blink.pio.h.
+    pio_sm_config c = interrupt_controller_program_get_default_config(offset);
 
     sm_config_set_clkdiv(&c, div);
 

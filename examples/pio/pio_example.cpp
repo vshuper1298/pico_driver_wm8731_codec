@@ -17,6 +17,8 @@ const PIO pio = pio0;
 // const PIO pio_1 = pio1;
 uint sm = 0;
 uint sm1 = 1;
+uint irq_ctrl_sm = 2;
+uint offset1 = 0;
 
 void PioExample::init()
 {
@@ -29,7 +31,8 @@ void PioExample::init()
   // Add PIO program to PIO instruction memory. SDK will find location and
   // return with the memory offset of the program.
   const uint offset = pio_add_program(pio, &pio_example_program);
-  const uint offset1 = pio_add_program(pio, &pio_example_wave_program);
+  uint offset1 = pio_add_program(pio, &pio_example_wave_program);
+  uint offset2 = pio_add_program(pio, &interrupt_controller_program);
 
 
   // pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
@@ -40,16 +43,17 @@ void PioExample::init()
   pio_example_program_init(pio, sm, offset, 6, 5);
   // sleep_ms(20);
   pio_example_wave_program_init(pio, sm1, offset1, 7, 5);
+  interrupt_controller_program_init(pio, irq_ctrl_sm, offset2, 7, 5);
 
   #define H_ACTIVE   1 //655    // (active + frontporch - 1) - one cycle delay for mov
-  #define V_ACTIVE   7 // n * 6 + 1 (high/low part has a 6 cycles in addition to the delay)
+  #define V_ACTIVE   7 //  1 + n * 6 (high/low part has a 6 cycles in addition to the delay)
 
   pio_sm_put_blocking(pio, sm, H_ACTIVE);
   pio_sm_put_blocking(pio, sm1, V_ACTIVE);
 
   // pio_set_irq1_source_enabled(pio, static_cast<uint>(pis_interrupt0) + sm1, true);
 
-  pio_enable_sm_mask_in_sync(pio, (1u << sm) | (1u << sm1));
+  pio_enable_sm_mask_in_sync(pio, (1u << sm) | (1u << sm1) | (1u << irq_ctrl_sm));
   // irq_set_enabled(PIO0_IRQ_1, true);
 }
 
@@ -114,6 +118,11 @@ void wave2_task(void*)
 
 #define mainQUEUE_LENGTH					( 1 )
 
+void move_waveform_right()
+{
+  pio_sm_exec(pio0, sm1, pio_encode_set(pio_y, 1));
+}
+
 void PioExample::run()
 {
   /* Create the queue. */
@@ -142,14 +151,6 @@ void PioExample::run()
 	timer tasks to be created.  See the memory management section on the
 	FreeRTOS web site for more details on the FreeRTOS heap
 	http://www.freertos.org/a00111.html. */
-	// while(true);
-
-  // multicore_launch_core1(write_wave_program_data);
-  // static uint16_t i = 20;
-  // int i = 1;
-
-  // pio_sm_put_blocking(pio, sm, 0);
-  // pio_sm_put_blocking(pio, sm1, 0);
 
   // pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
   // pio_set_irq0_source_enabled(pio_1, pis_interrupt0, true);
@@ -157,16 +158,12 @@ void PioExample::run()
   // irq_set_mask_enabled(PIO0_IRQ_0, true);
   // irq_set_enabled(PIO0_IRQ_0, true);
 
-  for (int i = 1; ; i ^= 1) {
-    // --i;
-    // if (i == false)
-    //   increase_counter(31);
-    // pio_sm_put_blocking(pio_1, sm1, i);
-    // pio_sm_put_blocking(pio, sm, i);
-
-    
-    // pio_sm_put_blocking(pio, sm, 0);
-    // pio_sm_put_blocking(pio_1, sm1, 0);
+  while(true) {
+    int c = getchar_timeout_us(0);
+    if (c >= 0 && (c == '=' || c == '+')) {
+      move_waveform_right();
+      printf("Waveform moved right for 1 pio cycle\n");
+    }
   }
 }
 
